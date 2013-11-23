@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <title>Allthingsfintech by mhittesdorf</title>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="container">
+        <h1>Allthingsfintech</h1>
+        <h2>Source code from All things finance and technology blog</h2>
+
+        <section id="downloads">
+          <a href="https://github.com/mhittesdorf/allthingsfintech/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/mhittesdorf/allthingsfintech/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/mhittesdorf/allthingsfintech" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+        </section>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="main_content">
+        <p>Source code for the Introducing QuantLib series published on my 'All things finance and technology' blog (<a href="http://mhittesdorf.wordpress.com">http://mhittesdorf.wordpress.com</a>)</p>
+
+<p>Includes a CMakeLists.txt file to build the tests using cmake.  </p>
+
+<p>Instructions to build on Linux (Ubuntu 12.04):</p>
+
+<ul>
+<li>Make sure the Boost (1.51) and QuantLib (1.21) libraries are installed on your machine. Header files should be in /usr/local/include. Shared libraries should be in /usr/local/lib.  These are the default installation directories.</li>
+<li>Create a working directory and clone the allthingsfintech project into your own git repository: git clone <a href="https://github.com/mhittesdorf/allthingsfintech.git">https://github.com/mhittesdorf/allthingsfintech.git</a>
+</li>
+<li>Create a 'build' subdirectory under 'allthingsfintech' and 'cd' to it: cd allthingsfintech; mkdir build; cd build</li>
+<li>Make sure cmake is installed (sudo apt-get install cmake) and then generate makefile: cmake ..</li>
+<li>Build the application: make</li>
+<li>The result should be an executable called 'allthingsfintech'.  Run it with the command: ./allthingsfintech</li>
+</ul><p>NOTE: Though I've only tested this build on Linux, the instructions should be similar for Windows as cmake is a cross-platform build system.</p>
+
+<p>Enjoy! </p>
+
+<ul>
+<li>Mick Hittesdorf</li>
+</ul>
+      </section>
+    </div>
+
+    
+  </body>
+</html>
