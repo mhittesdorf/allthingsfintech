@@ -11,6 +11,8 @@ Instructions to build on Linux (Ubuntu 12.04):
 * Build the application: make
 * The result should be an executable called 'allthingsfintech'.  Run it with the command: ./allthingsfintech
 
+NOTE: Though I've only tested this build on Linux, the instructions should be similar for Windows as cmake is a cross-platform build system.
+
 
 Enjoy! 
 
