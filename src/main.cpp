@@ -46,7 +46,7 @@ namespace {
 	}
      
     /**
-     * Introducing QuantLib: Calculating Future Value 
+     * Introducing QuantLib: Calculating Present Value 
      */
 	BOOST_AUTO_TEST_CASE(testCalculatePresentValue) {
 		Leg cashFlows;
