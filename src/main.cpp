@@ -1460,3 +1460,32 @@ namespace {
 	}
 
 }
+
+	BOOST_AUTO_TEST_CASE(testGeometricBrownianMotion) {
+
+		Real startingPrice = 20.16; //closing price for INTC on 12/7/2012
+		Real mu = .2312;  //one year historical annual return
+		Volatility sigma = 0.2116; //one year historical volatility
+		Size timeSteps = 255;  //trading days in a year
+		Time length = 1;  //one year
+        const boost::shared_ptr<StochasticProcess>& gbm = 
+			boost::shared_ptr<StochasticProcess>(new GeometricBrownianMotionProcess(startingPrice, mu, sigma));
+
+		//generate normally distributed random numbers from uniform distribution using Box-Muller transformation
+		BigInteger seed = SeedGenerator::instance().get();
+		typedef BoxMullerGaussianRng<MersenneTwisterUniformRng> MersenneBoxMuller;
+		MersenneTwisterUniformRng mersenneRng(seed);
+		MersenneBoxMuller boxMullerRng(mersenneRng);
+		RandomSequenceGenerator<MersenneBoxMuller> gsg(timeSteps, boxMullerRng);
+		PathGenerator<RandomSequenceGenerator<MersenneBoxMuller> > gbmPathGenerator(gbm, length, timeSteps, gsg, false);
+	
+		const Path& samplePath = gbmPathGenerator.next().value;
+		
+		std::ofstream gbmFile;
+		gbmFile.open("/home/mick/Documents/blog/geometric-brownian-motion/gbm.dat", std::ios::out);
+		for (Size i=0; i<timeSteps; ++i) {
+			gbmFile << boost::format("%d %.4f") % i % samplePath.at(i) << std::endl;
+		}
+		gbmFile.close();	
+		
+    }
