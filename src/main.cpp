@@ -1488,20 +1488,49 @@ namespace {
 		Volatility sigma = 0.2116; //one year historical volatility
 		Size timeSteps = 255; //trading days in a year
 		Time length = 1; //one year
+
+		//instantiate Geometric Brownian Motion (GBM) stochastic process
 		const boost::shared_ptr<StochasticProcess>& gbm =
 			boost::shared_ptr<StochasticProcess > (new GeometricBrownianMotionProcess(startingPrice, mu, sigma));
 
-		//generate normally distributed random numbers from uniform distribution using Box-Muller transformation
+		//generate sequence of normally distributed random numbers from uniform distribution using Box-Muller transformation
 		BigInteger seed = SeedGenerator::instance().get();
 		typedef BoxMullerGaussianRng<MersenneTwisterUniformRng> MersenneBoxMuller;
 		MersenneTwisterUniformRng mersenneRng(seed);
 		MersenneBoxMuller boxMullerRng(mersenneRng);
 		RandomSequenceGenerator<MersenneBoxMuller> gsg(timeSteps, boxMullerRng);
-		PathGenerator<RandomSequenceGenerator<MersenneBoxMuller> > gbmPathGenerator(gbm, length, timeSteps, gsg, false);
-
+		
+        //generate simulated path of stock price
+        PathGenerator<RandomSequenceGenerator<MersenneBoxMuller> > gbmPathGenerator(gbm, length, timeSteps, gsg, false);
 		const Path& samplePath = gbmPathGenerator.next().value;
+		
+		//calculate simulated sample returns
+		boost::function<Real (Real, Real)> calcLogReturns = [](Real x, Real y) {return std::log(y/x);};
+		std::vector<Real> logReturns;
+		Path::iterator samplePathBegin = samplePath.begin();
+		Path::iterator samplePathEnd = samplePath.end();
+		Path::iterator endMinusOne = std::prev(samplePathEnd);
+		Path::iterator beginPlusOne = std::next(samplePathBegin);
+		
+		std::transform(samplePathBegin, endMinusOne, beginPlusOne,
+				std::back_inserter(logReturns), calcLogReturns);		
+		
+		//calculate some general statistics
+		GeneralStatistics statistics;
 
-		std::ofstream gbmFile;
+		//returns statistics
+		statistics.addSequence(logReturns.begin(), logReturns.end());
+		std::cout << boost::format("Standard deviation of simulated returns (Normal): %.4f") % 
+				(statistics.standardDeviation() * std::sqrt(255)) << std::endl;
+
+		//price statistics
+		statistics.reset();
+		statistics.addSequence(samplePath.begin(), samplePath.end());
+		std::cout << boost::format("Price statistics: mean=%.2f, min=%.2f, max=%.2f") %
+			statistics.mean() % statistics.min() % statistics.max() << std::endl;  
+
+		//write simulated path to a file for charting
+        std::ofstream gbmFile;
 		gbmFile.open("/home/mick/Documents/blog/geometric-brownian-motion/gbm.dat", std::ios::out);
 		for (Size i = 0; i < timeSteps; ++i) {
 			gbmFile << boost::format("%d %.4f") % i % samplePath.at(i) << std::endl;
@@ -1520,27 +1549,127 @@ namespace {
 
 		Real startingPrice = 20.16; //closing price for INTC on 12/7/2012
 		Real mu = .2312; //one year historical annual return
-		Volatility sigma = 0.2116; //one year historical volatility
+		Volatility sigma = 0.2116;
+		Volatility scaledSigma = std::sqrt(sigma * sigma * 3/5); //one year historical volatility scaled by reciprocal of student-t variance (v/(v - 2)) 
 		Size timeSteps = 255; //trading days in a year
 		Time length = 1; //one year
+		
+		//instantiate Geometric Brownian Motion (GBM) stochastic process
 		const boost::shared_ptr<StochasticProcess>& gbm =
-			boost::shared_ptr<StochasticProcess > (new GeometricBrownianMotionProcess(startingPrice, mu, sigma));
+			boost::shared_ptr<StochasticProcess > (new GeometricBrownianMotionProcess(startingPrice, mu, scaledSigma));
 
-		//generate normally distributed random numbers from uniform distribution using Box-Muller transformation
+		//random sequence generator will use the Mersenne Twister algorithm
 		BigInteger seed = SeedGenerator::instance().get();
 		MersenneTwisterUniformRng mersenneRng(seed);
 		RandomSequenceGenerator<MersenneTwisterUniformRng> rsg(timeSteps, mersenneRng);
 
-		boost::math::students_t_distribution<> studentT(5); //3 degrees of freedom - want fat tails!
+		//instantiate Student T distribution from Boost math library
+		boost::math::students_t_distribution<> studentT(5); //5 degrees of freedom - want fat tails!
 		boost::function<Real (Real)> icd = boost::bind(studentTInverse, studentT, _1); 
-		
-		InverseCumulativeRsg<RandomSequenceGenerator<MersenneTwisterUniformRng>, boost::function<Real (Real)> > invCumRsg(rsg, icd);
-		PathGenerator<InverseCumulativeRsg<RandomSequenceGenerator<MersenneTwisterUniformRng>, boost::function<Real (Real)> > > gbmPathGenerator(gbm, length, timeSteps, invCumRsg, false);
+
+		//samples random numbers from the Student T distribution		
+		InverseCumulativeRsg<RandomSequenceGenerator<MersenneTwisterUniformRng>, 
+            boost::function<Real (Real)> > invCumRsg(rsg, icd);
+
+		//generates a single path
+		PathGenerator<InverseCumulativeRsg<RandomSequenceGenerator<MersenneTwisterUniformRng>, 
+            boost::function<Real (Real)> > > gbmPathGenerator(gbm, length, timeSteps, invCumRsg, false);
 
 		const Path& samplePath = gbmPathGenerator.next().value;
 
+		//calculate simulated sample returns
+		boost::function<Real (Real, Real)> calcLogReturns = [](Real x, Real y) {return std::log(y/x);};
+		std::vector<Real> logReturns;
+		Path::iterator samplePathBegin = samplePath.begin();
+		Path::iterator samplePathEnd = samplePath.end();
+		Path::iterator endMinusOne = std::prev(samplePathEnd);
+		Path::iterator beginPlusOne = std::next(samplePathBegin);
+		
+		std::transform(samplePathBegin, endMinusOne, beginPlusOne,
+		    std::back_inserter(logReturns), calcLogReturns);		
+		
+		//calculate some general statistics
+		GeneralStatistics statistics;
+
+		//returns statistics
+		statistics.addSequence(logReturns.begin(), logReturns.end());
+		std::cout << boost::format("Standard deviation of simulated returns (Student-T): %.4f") % 
+	        (statistics.standardDeviation() * std::sqrt(255)) << std::endl;
+
+		//price statistics
+		statistics.reset();
+		statistics.addSequence(samplePath.begin(), samplePath.end());
+		std::cout << boost::format("Price statistics: mean=%.2f, min=%.2f, max=%.2f") %
+			statistics.mean() % statistics.min() % statistics.max() << std::endl;  
+
+		//write results to a file 
 		std::ofstream gbmFile;
 		gbmFile.open("/home/mick/Documents/blog/geometric-brownian-motion/gbm-student.dat", std::ios::out);
+		for (Size i = 0; i < timeSteps; ++i) {
+		    gbmFile << boost::format("%d %.4f") % i % samplePath.at(i) << std::endl;
+		}
+		
+		gbmFile.close();
+
+	}
+
+    BOOST_AUTO_TEST_CASE(testGeometricBrownianMotionStudentTLowDiscrepancyRSG) {
+
+		Real startingPrice = 20.16; //closing price for INTC on 12/7/2012
+		Real mu = .2312; //one year historical annual return
+		Volatility sigma = 0.2116;
+		Volatility scaledSigma = std::sqrt(sigma * sigma * 3/5); //one year historical volatility scaled by reciprocal of student-t variance (v/(v - 2)) 
+		Size timeSteps = 255; //trading days in a year
+		Time length = 1; //one year
+		
+		//instantiate Geometric Brownian Motion (GBM) stochastic process
+		const boost::shared_ptr<StochasticProcess>& gbm =
+			boost::shared_ptr<StochasticProcess > (new GeometricBrownianMotionProcess(startingPrice, mu, scaledSigma));
+
+		//random sequence generator will use the Mersenne Twister algorithm
+		BigInteger seed = SeedGenerator::instance().get();
+        HaltonRsg rsg(timeSteps);
+        
+		//instantiate Student T distribution from Boost math library
+		boost::math::students_t_distribution<> studentT(5); //5 degrees of freedom - want fat tails!
+		boost::function<Real (Real)> icd = boost::bind(studentTInverse, studentT, _1); 
+
+		//samples random numbers from the Student T distribution		
+		InverseCumulativeRsg<HaltonRsg, boost::function<Real (Real)> > invCumRsg(rsg, icd);
+
+		//generates a single path
+		PathGenerator<InverseCumulativeRsg<HaltonRsg, boost::function<Real (Real)> > > gbmPathGenerator(gbm, length, timeSteps, invCumRsg, false);
+
+		const Path& samplePath = gbmPathGenerator.next().value;
+		
+		//calculate simulated sample returns
+		boost::function<Real (Real, Real)> calcLogReturns = [](Real x, Real y) {return std::log(y/x);};
+		std::vector<Real> logReturns;
+		Path::iterator samplePathBegin = samplePath.begin();
+		Path::iterator samplePathEnd = samplePath.end();
+		Path::iterator endMinusOne = std::prev(samplePathEnd);
+		Path::iterator beginPlusOne = std::next(samplePathBegin);
+		
+		std::transform(samplePathBegin, endMinusOne, beginPlusOne,
+				std::back_inserter(logReturns), calcLogReturns);		
+		
+		//calculate some general statistics
+		GeneralStatistics statistics;
+
+		//returns statistics
+		statistics.addSequence(logReturns.begin(), logReturns.end());
+		std::cout << boost::format("Standard deviation of simulated returns(Student-T / Halton): %.4f") % 
+				(statistics.standardDeviation() * std::sqrt(255)) << std::endl;
+
+		//price statistics
+		statistics.reset();
+		statistics.addSequence(samplePath.begin(), samplePath.end());
+		std::cout << boost::format("Price statistics: mean=%.2f, min=%.2f, max=%.2f") %
+			statistics.mean() % statistics.min() % statistics.max() << std::endl;  
+		
+		//write results to a file 
+		std::ofstream gbmFile;
+		gbmFile.open("/home/mick/Documents/blog/geometric-brownian-motion/gbm-student-halton.dat", std::ios::out);
 		for (Size i = 0; i < timeSteps; ++i) {
 			gbmFile << boost::format("%d %.4f") % i % samplePath.at(i) << std::endl;
 		}
